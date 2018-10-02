@@ -26,7 +26,11 @@ queue_t *q_new()
 {
     queue_t *q = malloc(sizeof(queue_t));
     /* What if malloc returned NULL? */
+    if (q == NULL)
+        return false;
     q->head = NULL;
+    q->tail = NULL;
+    q->size = 0;
     return q;
 }
 
@@ -35,6 +39,25 @@ void q_free(queue_t *q)
 {
     /* How about freeing the list elements and the strings? */
     /* Free queue structure */
+    list_ele_t *front, *rear;
+    if (q == NULL) {
+        return;
+    }
+    if ((front = q->head) == NULL) {
+        free(q);
+        return;
+    }
+    rear = front->next;
+    while (rear != NULL) {
+        free(front->value);
+        free(front);
+        (q->size)--;
+        front = rear;
+        rear = rear->next;
+    }
+    free(front->value);
+    free(front);
+    (q->size)--;
     free(q);
 }
 
@@ -47,16 +70,42 @@ void q_free(queue_t *q)
  */
 bool q_insert_head(queue_t *q, char *s)
 {
-    list_ele_t *newh;
     /* What should you do if the q is NULL? */
-    newh = malloc(sizeof(list_ele_t));
+    if (q == NULL)
+        return false;
     /* Don't forget to allocate space for the string and copy it */
     /* What if either call to malloc returns NULL? */
+    list_ele_t *newh;
+    newh = (list_ele_t *) malloc(sizeof(list_ele_t));
+    if (newh == NULL) {
+        return false;
+    }
+
+    newh->value = malloc(sizeof(char) * (strlen(s) + 1));
+    if (newh->value == NULL) {
+        // printf("new->value allocation failed\n");
+        free(newh);
+        return false;
+    }
+
+    // while(newh->value == NULL){
+    //    newh->value = malloc(sizeof(char) * (strlen(s) + 1));
+    //}
+
+    for (int i = 0; i < strlen(s); i++) {
+        newh->value[i] = s[i];
+    }
+    newh->value[strlen(s)] = '\0';
     newh->next = q->head;
     q->head = newh;
+
+    if (q->size == 0) {
+        q->tail = q->head;
+    }
+    q->size++;
+
     return true;
 }
-
 
 /*
   Attempt to insert element at tail of queue.
@@ -67,9 +116,37 @@ bool q_insert_head(queue_t *q, char *s)
  */
 bool q_insert_tail(queue_t *q, char *s)
 {
+    if (q == NULL)
+        return false;
+    if (q->head == NULL) {
+        return q_insert_head(q, s) ? true : false;
+    }
+
     /* You need to write the complete code for this function */
     /* Remember: It should operate in O(1) time */
-    return false;
+    list_ele_t *newt = malloc(sizeof(list_ele_t));
+    if (newt == NULL)
+        return false;
+
+    newt->value = malloc(sizeof(char) * (strlen(s) + 1));
+    if (newt->value == NULL) {
+        free(newt);
+        return false;
+    }
+    for (int i = 0; i < strlen(s); i++) {
+        newt->value[i] = s[i];
+    }
+    newt->value[strlen(s)] = '\0';
+
+    newt->next = NULL;  // Take care of this assignemnt, it's a must-be action
+                        // as test program would iterate the linked list.
+    // If the NULL is not assigned to newt->next, the test program would make
+    // not qualified judge.
+
+    q->tail->next = newt;
+    q->tail = newt;
+    q->size++;
+    return true;
 }
 
 /*
@@ -83,8 +160,37 @@ bool q_insert_tail(queue_t *q, char *s)
 bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
 {
     /* You need to fix up this code. */
-    q->head = q->head->next;
-    return true;
+    if (q == NULL || q->head == NULL)
+        return false;
+
+    // copy string from list element to sp
+    size_t string_length = strlen(q->head->value);
+    if (bufsize == 0) {
+        // Do nothing
+    } else if (string_length <= (bufsize - 1)) {
+        for (int i = 0; i < string_length; i++) {
+            sp[i] = q->head->value[i];
+        }
+        sp[string_length] = '\0';
+    } else {
+        for (int i = 0; i < (bufsize - 1); i++) {
+            sp[i] = q->head->value[i];
+        }
+        sp[bufsize - 1] = '\0';
+    }
+
+    // Use tmp pointer to store current head memory location
+    list_ele_t *tmp = q->head;
+
+    // Redirect q->head to the memory location of q->head->next
+    q->head = q->head->next;  // origin
+    q->size--;
+
+    // Remove the space of memory location in tmp
+    free(tmp->value);
+    free(tmp);
+
+    return true;  // origin
 }
 
 /*
@@ -95,7 +201,9 @@ int q_size(queue_t *q)
 {
     /* You need to write the code for this function */
     /* Remember: It should operate in O(1) time */
-    return 0;
+    if (q == NULL || q->head == NULL)
+        return 0;
+    return q->size;
 }
 
 /*
@@ -107,5 +215,20 @@ int q_size(queue_t *q)
  */
 void q_reverse(queue_t *q)
 {
+    list_ele_t *tmp;
+
     /* You need to write the code for this function */
+    if (q == NULL || q->head == NULL)
+        return;
+    list_ele_t *front = q->head;
+    list_ele_t *rear = front->next;
+    while (rear != NULL) {
+        tmp = rear;
+        rear = rear->next;
+        tmp->next = front;
+        front = tmp;
+    }
+    q->tail = q->head;
+    q->tail->next = NULL;
+    q->head = front;
 }
